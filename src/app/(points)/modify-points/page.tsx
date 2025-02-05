@@ -20,6 +20,10 @@ const teamSchema = z.object({
   totalPoints: z
     .number()
     .min(0, { message: "Points should be greater than or equal to 0" }),
+  timeRemaining: z
+    .number()
+    .min(0, { message: "Time should be greater than or equal to 0" })
+    .max(60, { message: "Time should be less than or equal to 60" }),
 });
 
 type FormData = z.infer<typeof teamSchema>;
@@ -30,7 +34,8 @@ const ModifyPoints = () => {
       team_id: string;
       team_name: string;
       team_members: string[];
-      score?: number;
+      score: number;
+      time_remaining: number;
     }[]
   >([]);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
@@ -62,7 +67,8 @@ const ModifyPoints = () => {
     setSelectedTeam(teamId);
     const selectedTeamData = teams.find((team) => team.team_id === teamId);
     if (selectedTeamData) {
-      setValue("totalPoints", selectedTeamData.score || 0);
+      setValue("totalPoints", selectedTeamData.score);
+      setValue("timeRemaining", selectedTeamData.time_remaining);
     }
   };
 
@@ -71,7 +77,7 @@ const ModifyPoints = () => {
       toast.error("Please select a team");
       return;
     }
-    const { totalPoints } = data;
+    const { totalPoints, timeRemaining } = data;
 
     const newTotalPoints = totalPoints;
     if (newTotalPoints < 0) {
@@ -84,12 +90,12 @@ const ModifyPoints = () => {
         "Warning: This will overwrite the existing score. Do you wish to continue?"
       );
       if (!confirmed) return;
-
+      console.log(timeRemaining);
       await axios.put(`https://coding-relay-be.onrender.com/teams/updateTeam`, {
         team_id: selectedTeam,
         score: newTotalPoints,
+        time_remaining: timeRemaining,
       });
-
       toast.success(`Score updated to ${newTotalPoints}`);
       setTimeout(() => {
         window.location.reload();
@@ -147,8 +153,9 @@ const ModifyPoints = () => {
             onSubmit={handleSubmit(onSubmit)}
           >
             <div className="mt-4 flex sm:flex-row flex-col gap-y-5 sm:gap-y-0 items-center justify-center w-full gap-x-10">
-              <div className="text-2xl sm:w-[70%] w-full flex sm:flex-col flex-row items-center justify-center gap-y-8">
+              <div className="text-2xl sm:w-[70%] w-full flex sm:flex-col flex-row items-center justify-center gap-y-[2.8rem]">
                 <span>Total Points</span>
+                <span>Time remaining</span>
               </div>
               <div className="w-[40%] flex flex-col items-center justify-center gap-y-[1.7rem]">
                 <Controller
@@ -172,6 +179,29 @@ const ModifyPoints = () => {
                 {errors.totalPoints && (
                   <span className="text-red-500 text-sm w-40 h-2 m-5 p-0 sm:-mt-2 -mt-4 sm:mb-0 mb-8">
                     {errors.totalPoints.message}
+                  </span>
+                )}
+                <Controller
+                  name="timeRemaining"
+                  control={control}
+                  render={({ field }) => (
+                    <input
+                      {...field}
+                      type="number"
+                      required
+                      value={field.value !== undefined ? field.value : ""}
+                      onChange={(e) => {
+                        const newValue =
+                          e.target.value === "" ? "" : Number(e.target.value);
+                        field.onChange(newValue);
+                      }}
+                      className="w-40 bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
+                    />
+                  )}
+                />
+                {errors.timeRemaining && (
+                  <span className="text-red-500 text-sm w-40 h-2 m-5 p-0 sm:-mt-2 -mt-4 sm:mb-0 mb-8">
+                    {errors.timeRemaining.message}
                   </span>
                 )}
               </div>

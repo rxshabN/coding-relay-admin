@@ -4,6 +4,19 @@ import { AnimatePresence, easeInOut, motion } from "framer-motion";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
+const menuItems = [
+  { href: "/create-team", label: "Create team" },
+  { href: "/modify-team", label: "Modify team" },
+  { href: "/add-points", label: "Add points" },
+  { href: "/modify-points", label: "Modify points" },
+  {
+    href: "/solution",
+    label: "View solution/test cases",
+    textSize: "text-[1.2rem] sm:text-[1.65rem] group-hover:text-[1.8rem]",
+  },
+  { href: "/leaderboard", label: "Leaderboard" },
+];
+
 export default function Home() {
   const [showText, setShowText] = useState(true);
   useEffect(() => {
@@ -12,6 +25,17 @@ export default function Home() {
     }, 1350);
     return () => clearTimeout(timer);
   }, []);
+  const [isAnimating, setIsAnimating] = useState(true);
+
+  useEffect(() => {
+    if (isAnimating) {
+      document.body.classList.add("overflow-hidden");
+    } else {
+      document.body.classList.remove("overflow-hidden");
+    }
+
+    return () => document.body.classList.remove("overflow-hidden");
+  }, [isAnimating]);
   return (
     <div className="relative min-w-screen flex flex-col items-center justify-start text-center">
       <AnimatePresence mode="wait">
@@ -39,51 +63,27 @@ export default function Home() {
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: easeInOut }}
+            onAnimationComplete={() => setIsAnimating(false)}
             className="mt-12"
           >
             <div className="w-fit h-fit flex flex-col items-center justify-center gap-y-5 sm:mt-0 mt-28">
-              <Link href="/create-team">
-                <button className="ml-2 sm:ml-0 relative w-[20rem] h-16 sm:w-[30.5rem] sm:h-20 p-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 group">
-                  <div className="flex items-center justify-center w-full h-full text-3xl text-white bg-black rounded-lg transition-all duration-500 group-hover:shadow-lg group-hover:shadow-[#4b52f2] group-hover:bg-transparent group-hover:text-[2.2rem]">
-                    Create team
-                  </div>
-                </button>
-              </Link>
-              <Link href="/modify-team">
-                <button className="ml-2 sm:ml-0 relative w-[20rem] h-16 sm:w-[30.5rem] sm:h-20 p-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 group">
-                  <div className="flex items-center justify-center w-full h-full text-3xl text-white bg-black rounded-lg transition-all duration-500 group-hover:shadow-lg group-hover:shadow-[#4b52f2] group-hover:bg-transparent group-hover:text-[2.2rem]">
-                    Modify team
-                  </div>
-                </button>
-              </Link>
-              <Link href="/add-points">
-                <button className="ml-2 sm:ml-0 relative w-[20rem] h-16 sm:w-[30.5rem] sm:h-20 p-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 group">
-                  <div className="flex items-center justify-center w-full h-full text-3xl text-white bg-black rounded-lg transition-all duration-500 group-hover:shadow-lg group-hover:shadow-[#4b52f2] group-hover:bg-transparent group-hover:text-[2.2rem]">
-                    Add points
-                  </div>
-                </button>
-              </Link>
-              <Link href="/modify-points">
-                <button className="ml-2 sm:ml-0 relative w-[20rem] h-16 sm:w-[30.5rem] sm:h-20 p-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 group">
-                  <div className="flex items-center justify-center w-full h-full text-3xl text-white bg-black rounded-lg transition-all duration-500 group-hover:shadow-lg group-hover:shadow-[#4b52f2] group-hover:bg-transparent group-hover:text-[2.2rem]">
-                    Modify points
-                  </div>
-                </button>
-              </Link>
-              <Link href="/solution">
-                <button className="ml-2 sm:ml-0 relative w-[20rem] h-16 sm:w-[30.5rem] sm:h-20 p-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 group">
-                  <div className="flex items-center justify-center w-full h-full text-[1.2rem] sm:text-[1.65rem] text-white bg-black rounded-lg transition-all duration-500 group-hover:shadow-lg group-hover:shadow-[#4b52f2] group-hover:bg-transparent group-hover:text-[1.8rem]">
-                    View solution/test cases{" "}
-                  </div>
-                </button>
-              </Link>
-              <Link href="/leaderboard">
-                <button className="ml-2 sm:ml-0 relative w-[20rem] h-16 sm:w-[30.5rem] sm:h-20 p-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 group">
-                  <div className="flex items-center justify-center w-full h-full text-3xl text-white bg-black rounded-lg transition-all duration-500 group-hover:shadow-lg group-hover:shadow-[#4b52f2] group-hover:bg-transparent group-hover:text-[2.2rem]">
-                    Leaderboard
-                  </div>
-                </button>
-              </Link>
+              {menuItems.map(
+                ({
+                  href,
+                  label,
+                  textSize = "text-3xl group-hover:text-[2.2rem]",
+                }) => (
+                  <Link key={href} href={href}>
+                    <button className="ml-2 sm:ml-0 relative w-[20rem] h-16 sm:w-[30.5rem] sm:h-20 p-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 group">
+                      <div
+                        className={`flex items-center justify-center w-full h-full ${textSize} text-white bg-black rounded-lg transition-all duration-500 group-hover:shadow-lg group-hover:shadow-[#4b52f2] group-hover:bg-transparent`}
+                      >
+                        {label}
+                      </div>
+                    </button>
+                  </Link>
+                )
+              )}
             </div>
           </motion.div>
         )}

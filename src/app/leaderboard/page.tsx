@@ -9,6 +9,7 @@ interface Team {
   team_name: string;
   team_members: string[];
   score: number;
+  time_remaining: number;
 }
 
 const Leaderboard = () => {
@@ -54,6 +55,9 @@ const Leaderboard = () => {
               Team leader
             </th>
             <th className="py-2 px-4 text-center text-xl">Total Score</th>
+            <th className="sm:block hidden py-2 px-4 text-center text-xl">
+              Time Remaining
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -70,6 +74,9 @@ const Leaderboard = () => {
               </td>
               <td className="py-2 px-4 text-center border border-white/50">
                 {team.score}
+              </td>
+              <td className="sm:block hidden py-2 px-4 text-center border border-white/50">
+                {team.time_remaining}
               </td>
             </tr>
           ))}
