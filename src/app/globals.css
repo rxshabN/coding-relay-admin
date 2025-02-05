@@ -9,7 +9,6 @@
 }
 
 body {
-  /* overflow: hidden; */
   font-family: "Bruno Ace", serif;
   font-weight: 400;
   font-style: normal;
@@ -20,6 +19,14 @@ body {
 
 input::placeholder {
   color: gray;
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: inherit !important;
 }
 
 @layer base {

@@ -1,6 +1,6 @@
 "use client";
 
-import { easeInOut, motion } from "framer-motion";
+import { AnimatePresence, easeInOut, motion } from "framer-motion";
 import { Toaster, toast } from "sonner";
 import axios from "axios";
 import { useForm } from "react-hook-form";
@@ -25,9 +25,25 @@ const teamSchema = z.object({
   hiddenTestCases: z
     .string()
     .min(1, { message: "Hidden test cases is required" }),
+  timeRemaining: z
+    .number()
+    .min(0, { message: "Time should be greater than or equal to 0" })
+    .max(60, { message: "Time should be less than or equal to 60" }),
 });
 
 type FormData = z.infer<typeof teamSchema>;
+
+interface TestCase {
+  id: number;
+  input: string;
+  output: string;
+}
+
+interface Question {
+  id: number;
+  question: string;
+  testCaseId: TestCase[];
+}
 
 const AddPoints = () => {
   const [isMobile, setIsMobile] = useState(false);
@@ -39,12 +55,42 @@ const AddPoints = () => {
     window.addEventListener("resize", checkMobile);
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [questionSet, setQuestionSet] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<Question[]>([]);
+
+  const [selectedQuestionId, setSelectedQuestionId] = useState<number | null>(
+    null
+  );
+  const [selectedQuestionData, setSelectedQuestionData] =
+    useState<Question | null>(null);
+
+  const fetchQuestions = async (difficulty: string) => {
+    try {
+      const response = await axios.get(
+        `https://coding-relay-be.onrender.com/questions/getQuestionsByDifficulty?difficulty=${difficulty}`
+      );
+      setQuestions(response.data);
+      setSelectedQuestionId(null);
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to fetch questions"
+      );
+    }
+  };
+  useEffect(() => {
+    if (selectedQuestionId) {
+      const question = questions.find((q) => q.id === selectedQuestionId);
+      setSelectedQuestionData(question || null);
+    }
+  }, [selectedQuestionId, questions]);
   const [teams, setTeams] = useState<
     {
       team_id: string;
       team_name: string;
       team_members: string[];
       score?: number;
+      time_remaining?: number;
     }[]
   >([]);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
@@ -106,9 +152,14 @@ const AddPoints = () => {
       toast.error("Please select a team");
       return;
     }
-    const { questionSet, testCases, hiddenTestCases } = data;
+    const { questionSet, testCases, hiddenTestCases, timeRemaining } = data;
     const points = calculatePoints(questionSet, testCases, hiddenTestCases);
-    if (!questionSet || !testCases || !hiddenTestCases) {
+    if (
+      !questionSet ||
+      testCases === null ||
+      hiddenTestCases === null ||
+      timeRemaining === null
+    ) {
       toast.error("Please fill out all fields");
       return;
     }
@@ -125,6 +176,7 @@ const AddPoints = () => {
       await axios.put(`https://coding-relay-be.onrender.com/teams/updateTeam`, {
         team_id: selectedTeam,
         score: newScore,
+        time_remaining: timeRemaining,
       });
       toast.success(`${points} points added to score`);
       setTimeout(() => {
@@ -137,307 +189,461 @@ const AddPoints = () => {
   };
   return (
     <>
-      <motion.div
-        initial={{ opacity: 0, y: 30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, delay: 0.1, ease: easeInOut }}
-        className="flex flex-col text-center items-center justify-center mt-12"
-      >
-        <h1 className="sm:text-7xl text-4xl mb-12 sm:mt-0 mt-10">Add points</h1>
-        <Select onValueChange={handleTeamSelect}>
-          <SelectTrigger
-            autoFocus={false}
-            className="test-base sm:w-[32rem] w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700 mb-5 -mt-5"
+      <AnimatePresence mode="wait">
+        <motion.div
+          key="question"
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1, ease: easeInOut }}
+          className="flex flex-col text-center items-center justify-center mt-12"
+        >
+          <h1 className="sm:text-7xl text-4xl mb-7 sm:mt-0 mt-10">
+            Solution for question
+          </h1>
+          <Select
+            onValueChange={(value) => {
+              setQuestionSet(value);
+              fetchQuestions(value);
+            }}
           >
-            <SelectValue placeholder="Select a Team" />
-          </SelectTrigger>
-          <SelectContent
-            avoidCollisions={false}
-            position="popper"
-            className="bg-black text-white border-none absolute z-50"
-          >
-            {teams && teams.length > 0 ? (
-              teams.map((team) => (
-                <SelectItem
-                  key={team.team_id}
-                  value={team.team_id}
-                  className="hover:text-black hover:bg-white"
-                >
-                  {team.team_name}
-                </SelectItem>
-              ))
-            ) : (
-              <p>No teams exist</p>
-            )}
-          </SelectContent>
-        </Select>
-        {selectedTeam !== null ? (
-          <motion.form
+            <SelectTrigger className="sm:w-[32rem] w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700 mb-5">
+              <SelectValue placeholder="Select Question Set" />
+            </SelectTrigger>
+            <SelectContent className="bg-black text-white border-none absolute z-50">
+              <SelectItem
+                className="hover:text-black hover:bg-white"
+                value="easy"
+              >
+                Easy
+              </SelectItem>
+              <SelectItem
+                className="hover:text-black hover:bg-white"
+                value="medium"
+              >
+                Medium
+              </SelectItem>
+              <SelectItem
+                className="hover:text-black hover:bg-white"
+                value="hard"
+              >
+                Hard
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          {questions.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease: easeInOut }}
+            >
+              <Select
+                onValueChange={(value) => setSelectedQuestionId(Number(value))}
+              >
+                <SelectTrigger className="sm:w-[32rem] w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700 mb-5">
+                  <SelectValue placeholder="Select Question ID" />
+                </SelectTrigger>
+                <SelectContent className="bg-black text-white border-none absolute z-50">
+                  {questions.map((q) => (
+                    <SelectItem
+                      className="hover:text-black hover:bg-white"
+                      key={q.id}
+                      value={q.id.toString()}
+                    >
+                      {q.id}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </motion.div>
+          )}
+          {selectedQuestionData && (
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: easeInOut }}
+              className="border border-white/50 text-left bg-gray-900/20 text-white p-6 rounded-lg sm:w-[32rem] w-[22rem]"
+            >
+              <h2 className="text-2xl mb-4 text-purple-500">Question:</h2>
+              <p className="text-lg mb-6">{selectedQuestionData.question}</p>
+              <div className="flex items-center justify-center gap-x-0 -mt-2 mb-3">
+                <div className="w-full h-[2px] bg-gradient-to-r from-black to-purple-500"></div>
+                <div className="w-full h-[2px] bg-gradient-to-l from-black to-purple-500"></div>
+              </div>
+              <h2 className="text-2xl mb-4 text-purple-500">Test Cases:</h2>
+              <div className="space-y-4">
+                {selectedQuestionData.testCaseId.map((test) => (
+                  <div key={test.id} className="p-4 bg-gray-700 rounded-lg">
+                    <p>Input : {test.input}</p>
+                    <p>Expected Output : {test.output}</p>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+      <AnimatePresence mode="wait">
+        {selectedQuestionId && (
+          <motion.div
+            key="points"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, ease: easeInOut }}
-            className="flex flex-col items-center justify-around h-1/2"
-            onSubmit={handleSubmit(onSubmit)}
+            transition={{ duration: 0.5, delay: 0.1, ease: easeInOut }}
+            className="flex flex-col min-h-[60vh] text-center items-center justify-start sm:mt-10 mt-0"
           >
-            <div className="mt-4 flex items-center justify-center w-full gap-x-10">
-              {!isMobile && (
-                <>
-                  <div className="text-2xl w-[70%] flex flex-col items-center justify-center gap-y-8">
-                    <span>Question Set</span>
-                    <span>No. of Test Cases Passed</span>
-                    <span>Hidden Test Cases Viewed?</span>
-                  </div>
-                  <div className="w-[40%] flex flex-col items-center justify-center gap-y-[1.7rem]">
-                    <Controller
-                      name="questionSet"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          {...field}
-                          value={field.value}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                          }}
-                        >
-                          <SelectTrigger className="w-64 bg-black text-white border-[2.5px] border-purple-700">
-                            <SelectValue placeholder="Select difficulty" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black text-white border-none absolute z-50">
-                            <SelectItem
-                              className="hover:text-black hover:bg-white"
-                              value="easy"
+            <h1 className="sm:text-7xl text-4xl mb-12 sm:mt-0 mt-10">
+              Add Points
+            </h1>
+            <Select onValueChange={handleTeamSelect}>
+              <SelectTrigger
+                autoFocus={false}
+                className="test-base sm:w-[32rem] w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700 mb-5 -mt-5"
+              >
+                <SelectValue placeholder="Select a Team" />
+              </SelectTrigger>
+              <SelectContent
+                avoidCollisions={false}
+                position="popper"
+                className="bg-black text-white border-none absolute z-50"
+              >
+                {teams && teams.length > 0 ? (
+                  teams.map((team) => (
+                    <SelectItem
+                      key={team.team_id}
+                      value={team.team_id}
+                      className="hover:text-black hover:bg-white"
+                    >
+                      {team.team_name}
+                    </SelectItem>
+                  ))
+                ) : (
+                  <p>No teams exist</p>
+                )}
+              </SelectContent>
+            </Select>
+            {selectedTeam !== null ? (
+              <motion.form
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, ease: easeInOut }}
+                className="flex flex-col items-center justify-around h-1/2"
+                onSubmit={handleSubmit(onSubmit)}
+              >
+                <div className="mt-4 flex items-center justify-center w-full gap-x-10">
+                  {!isMobile && (
+                    <>
+                      <div className="text-2xl w-[70%] flex flex-col items-center justify-center gap-y-8">
+                        <span>Question Set</span>
+                        <span>No. of Test Cases Passed</span>
+                        <span>Hidden Test Cases Viewed?</span>
+                        <span>Time remaining</span>
+                      </div>
+                      <div className="w-[40%] flex flex-col items-center justify-center gap-y-[1.7rem]">
+                        <Controller
+                          name="questionSet"
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              {...field}
+                              value={field.value}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                              }}
                             >
-                              Easy
-                            </SelectItem>
-                            <SelectItem
-                              className="hover:text-black hover:bg-white"
-                              value="medium"
+                              <SelectTrigger className="w-64 bg-black text-white border-[2.5px] border-purple-700">
+                                <SelectValue placeholder="Select difficulty" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-black text-white border-none absolute z-50">
+                                <SelectItem
+                                  className="hover:text-black hover:bg-white"
+                                  value="easy"
+                                >
+                                  Easy
+                                </SelectItem>
+                                <SelectItem
+                                  className="hover:text-black hover:bg-white"
+                                  value="medium"
+                                >
+                                  Medium
+                                </SelectItem>
+                                <SelectItem
+                                  className="hover:text-black hover:bg-white"
+                                  value="hard"
+                                >
+                                  Hard
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.questionSet && (
+                          <span className="text-red-500 text-sm -mt-5">
+                            {errors.questionSet.message}
+                          </span>
+                        )}
+                        <Controller
+                          name="testCases"
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              {...field}
+                              value={field.value?.toString()}
+                              onValueChange={(value) =>
+                                field.onChange(parseInt(value))
+                              }
                             >
-                              Medium
-                            </SelectItem>
-                            <SelectItem
-                              className="hover:text-black hover:bg-white"
-                              value="hard"
-                            >
-                              Hard
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.questionSet && (
-                      <span className="text-red-500 text-sm -mt-5">
-                        {errors.questionSet.message}
-                      </span>
-                    )}
-                    <Controller
-                      name="testCases"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          {...field}
-                          value={field.value?.toString()}
-                          onValueChange={(value) =>
-                            field.onChange(parseInt(value))
-                          }
-                        >
-                          <SelectTrigger className="w-64 bg-black text-white border-[2.5px] border-purple-700">
-                            <SelectValue
-                              className="hover:text-black hover:bg-white"
-                              placeholder="Select test cases"
-                            />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black text-white border-none absolute z-50">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                              <SelectItem
-                                className="hover:text-black hover:bg-white"
-                                key={i}
-                                value={i.toString()}
-                              >
-                                {i}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.testCases && (
-                      <span className="text-red-500 text-sm -mt-5">
-                        {errors.testCases.message}
-                      </span>
-                    )}
+                              <SelectTrigger className="w-64 bg-black text-white border-[2.5px] border-purple-700">
+                                <SelectValue
+                                  className="hover:text-black hover:bg-white"
+                                  placeholder="Select test cases"
+                                />
+                              </SelectTrigger>
+                              <SelectContent className="bg-black text-white border-none absolute z-50">
+                                {[1, 2, 3, 4, 5].map((i) => (
+                                  <SelectItem
+                                    className="hover:text-black hover:bg-white"
+                                    key={i}
+                                    value={i.toString()}
+                                  >
+                                    {i}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.testCases && (
+                          <span className="text-red-500 text-sm -mt-5">
+                            {errors.testCases.message}
+                          </span>
+                        )}
 
-                    <Controller
-                      name="hiddenTestCases"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          {...field}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                          }}
-                        >
-                          <SelectTrigger className="w-64 bg-black text-white border-[2.5px] border-purple-700">
-                            <SelectValue placeholder="Required" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black text-white border-none absolute z-50">
-                            <SelectItem
-                              className="hover:text-black hover:bg-white"
-                              value="Yes"
+                        <Controller
+                          name="hiddenTestCases"
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              {...field}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                              }}
                             >
-                              Yes
-                            </SelectItem>
-                            <SelectItem
-                              className="hover:text-black hover:bg-white"
-                              value="No"
+                              <SelectTrigger className="w-64 bg-black text-white border-[2.5px] border-purple-700">
+                                <SelectValue placeholder="Required" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-black text-white border-none absolute z-50">
+                                <SelectItem
+                                  className="hover:text-black hover:bg-white"
+                                  value="Yes"
+                                >
+                                  Yes
+                                </SelectItem>
+                                <SelectItem
+                                  className="hover:text-black hover:bg-white"
+                                  value="No"
+                                >
+                                  No
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.hiddenTestCases && (
+                          <span className="text-red-500 text-sm -mt-5">
+                            {errors.hiddenTestCases.message}
+                          </span>
+                        )}
+                        <Controller
+                          name="timeRemaining"
+                          control={control}
+                          render={({ field }) => (
+                            <input
+                              {...field}
+                              type="number"
+                              value={
+                                field.value !== undefined ? field.value : ""
+                              }
+                              onChange={(e) => {
+                                const newValue =
+                                  e.target.value === ""
+                                    ? ""
+                                    : Number(e.target.value);
+                                field.onChange(newValue);
+                              }}
+                              className="w-64 h-10 bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
+                            />
+                          )}
+                        />
+                        {errors.timeRemaining && (
+                          <span className="text-red-500 text-sm w-40 h-2 m-5 p-0 sm:-mt-2 -mt-4 sm:mb-0 mb-8">
+                            {errors.timeRemaining.message}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
+                  {isMobile && (
+                    <>
+                      <div className="text-xl w-[70%] flex flex-col items-center justify-center gap-y-6">
+                        <span>Question Set</span>
+                        <Controller
+                          name="questionSet"
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              {...field}
+                              value={field.value}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                              }}
                             >
-                              No
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.hiddenTestCases && (
-                      <span className="text-red-500 text-sm -mt-5">
-                        {errors.hiddenTestCases.message}
-                      </span>
-                    )}
+                              <SelectTrigger className="text-base w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700">
+                                <SelectValue placeholder="Select difficulty" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-black text-white border-none absolute z-50">
+                                <SelectItem
+                                  className="hover:text-black hover:bg-white"
+                                  value="easy"
+                                >
+                                  Easy
+                                </SelectItem>
+                                <SelectItem
+                                  className="hover:text-black hover:bg-white"
+                                  value="medium"
+                                >
+                                  Medium
+                                </SelectItem>
+                                <SelectItem
+                                  className="hover:text-black hover:bg-white"
+                                  value="hard"
+                                >
+                                  Hard
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.questionSet && (
+                          <span className="text-red-500 text-sm -mt-5">
+                            {errors.questionSet.message}
+                          </span>
+                        )}
+                        <span>No. of Test Cases Passed</span>
+                        <Controller
+                          name="testCases"
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              {...field}
+                              value={field.value?.toString()}
+                              onValueChange={(value) =>
+                                field.onChange(parseInt(value))
+                              }
+                            >
+                              <SelectTrigger className="text-base w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700">
+                                <SelectValue placeholder="Select test cases" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-black text-white border-none absolute z-50">
+                                {[1, 2, 3, 4, 5].map((i) => (
+                                  <SelectItem
+                                    className="hover:text-black hover:bg-white"
+                                    key={i}
+                                    value={i.toString()}
+                                  >
+                                    {i}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.testCases && (
+                          <span className="text-red-500 text-sm -mt-5">
+                            {errors.testCases.message}
+                          </span>
+                        )}
+                        <span>Hidden Test Cases Viewed?</span>
+                        <Controller
+                          name="hiddenTestCases"
+                          control={control}
+                          render={({ field }) => (
+                            <Select
+                              {...field}
+                              onValueChange={(value) => {
+                                field.onChange(value);
+                              }}
+                            >
+                              <SelectTrigger className="text-base w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700">
+                                <SelectValue placeholder="Required" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-black text-white border-none absolute z-50">
+                                <SelectItem
+                                  className="hover:text-black hover:bg-white"
+                                  value="Yes"
+                                >
+                                  Yes
+                                </SelectItem>
+                                <SelectItem
+                                  className="hover:text-black hover:bg-white"
+                                  value="No"
+                                >
+                                  No
+                                </SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {errors.hiddenTestCases && (
+                          <span className="text-red-500 text-sm -mt-5">
+                            {errors.hiddenTestCases.message}
+                          </span>
+                        )}
+                        <span>Time remaining</span>
+                        <Controller
+                          name="timeRemaining"
+                          control={control}
+                          render={({ field }) => (
+                            <input
+                              {...field}
+                              type="number"
+                              value={
+                                field.value !== undefined ? field.value : ""
+                              }
+                              onChange={(e) => {
+                                const newValue =
+                                  e.target.value === ""
+                                    ? ""
+                                    : Number(e.target.value);
+                                field.onChange(newValue);
+                              }}
+                              className="w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
+                            />
+                          )}
+                        />
+                        {errors.timeRemaining && (
+                          <span className="text-red-500 text-sm w-40 h-2 m-5 p-0 sm:-mt-2 -mt-4 sm:mb-0 mb-8">
+                            {errors.timeRemaining.message}
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  className="mb-6 mt-10 relative w-[10.5rem] h-12 p-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 group"
+                >
+                  <div className="flex items-center justify-center w-full h-full text-2xl text-white bg-black rounded-lg transition-all duration-500 group-hover:shadow-lg group-hover:shadow-[#4b52f2] group-hover:bg-transparent group-hover:text-[1.8rem]">
+                    Save
                   </div>
-                </>
-              )}
-              {isMobile && (
-                <>
-                  <div className="text-xl w-[70%] flex flex-col items-center justify-center gap-y-6">
-                    <span>Question Set</span>
-                    <Controller
-                      name="questionSet"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          {...field}
-                          value={field.value}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                          }}
-                        >
-                          <SelectTrigger className="text-base w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700">
-                            <SelectValue placeholder="Select difficulty" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black text-white border-none absolute z-50">
-                            <SelectItem
-                              className="hover:text-black hover:bg-white"
-                              value="easy"
-                            >
-                              Easy
-                            </SelectItem>
-                            <SelectItem
-                              className="hover:text-black hover:bg-white"
-                              value="medium"
-                            >
-                              Medium
-                            </SelectItem>
-                            <SelectItem
-                              className="hover:text-black hover:bg-white"
-                              value="hard"
-                            >
-                              Hard
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.questionSet && (
-                      <span className="text-red-500 text-sm -mt-5">
-                        {errors.questionSet.message}
-                      </span>
-                    )}
-                    <span>No. of Test Cases Passed</span>
-                    <Controller
-                      name="testCases"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          {...field}
-                          value={field.value?.toString()}
-                          onValueChange={(value) =>
-                            field.onChange(parseInt(value))
-                          }
-                        >
-                          <SelectTrigger className="text-base w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700">
-                            <SelectValue placeholder="Select test cases" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black text-white border-none absolute z-50">
-                            {[1, 2, 3, 4, 5].map((i) => (
-                              <SelectItem
-                                className="hover:text-black hover:bg-white"
-                                key={i}
-                                value={i.toString()}
-                              >
-                                {i}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.testCases && (
-                      <span className="text-red-500 text-sm -mt-5">
-                        {errors.testCases.message}
-                      </span>
-                    )}
-                    <span>Hidden Test Cases Viewed?</span>
-                    <Controller
-                      name="hiddenTestCases"
-                      control={control}
-                      render={({ field }) => (
-                        <Select
-                          {...field}
-                          onValueChange={(value) => {
-                            field.onChange(value);
-                          }}
-                        >
-                          <SelectTrigger className="text-base w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700">
-                            <SelectValue placeholder="Required" />
-                          </SelectTrigger>
-                          <SelectContent className="bg-black text-white border-none absolute z-50">
-                            <SelectItem
-                              className="hover:text-black hover:bg-white"
-                              value="Yes"
-                            >
-                              Yes
-                            </SelectItem>
-                            <SelectItem
-                              className="hover:text-black hover:bg-white"
-                              value="No"
-                            >
-                              No
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
-                      )}
-                    />
-                    {errors.hiddenTestCases && (
-                      <span className="text-red-500 text-sm -mt-5">
-                        {errors.hiddenTestCases.message}
-                      </span>
-                    )}
-                  </div>
-                </>
-              )}
-            </div>
-            <button
-              type="submit"
-              className="mt-10 relative w-[12.5rem] h-12 p-1 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500 group"
-            >
-              <div className="flex items-center justify-center w-full h-full text-xl text-white bg-black rounded-lg transition-all duration-500 group-hover:shadow-lg group-hover:shadow-[#4b52f2] group-hover:bg-transparent group-hover:text-[1.4rem]">
-                Add points
-              </div>
-            </button>
-          </motion.form>
-        ) : (
-          ""
+                </button>
+              </motion.form>
+            ) : (
+              ""
+            )}
+          </motion.div>
         )}
-      </motion.div>
+      </AnimatePresence>
       <Toaster />
     </>
   );
