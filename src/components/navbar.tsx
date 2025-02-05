@@ -18,7 +18,15 @@ const Navbar = () => {
     { href: "/solution", label: "Solution" },
     { href: "/leaderboard", label: "Leaderboard" },
   ];
-
+  const linkVariants = {
+    hidden: { opacity: 0, y: -27.5 },
+    visible: (i: number) => ({
+      opacity: 1,
+      y: 0,
+      transition: { duration: 0.35, delay: 0.25 + i * 0.175 },
+    }),
+  };
+  const allLinks = [{ href: "/", label: "Home" }, ...links, ...links2];
   const [isMobile, setIsMobile] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -94,21 +102,14 @@ const Navbar = () => {
             &times;
           </button>
           <ul className="text-right space-y-6 text-4xl">
-            <li>
-              <Link
-                href="/"
-                className={`${
-                  pathname === "/"
-                    ? "text-blue-500 underline"
-                    : "hover:text-gray-400"
-                }`}
-                onClick={() => setMenuOpen(false)}
+            {allLinks.map(({ href, label }, index) => (
+              <motion.li
+                key={href}
+                custom={index}
+                variants={linkVariants}
+                initial="hidden"
+                animate="visible"
               >
-                Home
-              </Link>
-            </li>
-            {[...links, ...links2].map(({ href, label }) => (
-              <li key={href}>
                 <Link
                   href={href}
                   className={`block ${
@@ -120,7 +121,7 @@ const Navbar = () => {
                 >
                   {label}
                 </Link>
-              </li>
+              </motion.li>
             ))}
           </ul>
         </motion.div>
