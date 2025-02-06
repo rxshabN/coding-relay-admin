@@ -21,15 +21,14 @@ const teamSchema = z.object({
     .number()
     .min(0, { message: "Points should be greater than or equal to 0" }),
   timeRemaining: z
-    .union([z.string(), z.number()]) // Accepts both string & number
-    .transform((val) => {
-      if (typeof val === "string" && val.trim() === "") return 0; // Convert empty string to 0
-      return Number(val); // Convert valid numbers
-    })
-    .refine((val) => val >= 0 && val <= 60, {
-      message: "Time remaining must be between 0 and 60 minutes",
-    })
-    .optional(),
+    .union([
+      z
+        .number()
+        .min(0)
+        .max(60, { message: "Time remaining must be between 0 to 60 minutes" }),
+      z.undefined(),
+    ])
+    .optional(), // Optional field
 });
 
 type FormData = z.infer<typeof teamSchema>;
@@ -85,10 +84,23 @@ const ModifyPoints = () => {
     }
     const { totalPoints, timeRemaining } = data;
 
-    const newTotalPoints = totalPoints;
-    if (newTotalPoints < 0) {
+    if (totalPoints < 0) {
       toast.error("Total points must be a valid number and >= 0");
       return;
+    }
+
+    const updateData: {
+      team_id: string;
+      score: number;
+      time_remaining?: number;
+    } = {
+      team_id: selectedTeam,
+      score: totalPoints,
+    };
+
+    // Only include timeRemaining if the user provided a valid value
+    if (timeRemaining !== undefined) {
+      updateData.time_remaining = timeRemaining;
     }
 
     try {
@@ -96,13 +108,11 @@ const ModifyPoints = () => {
         "Warning: This will overwrite the existing score. Do you wish to continue?"
       );
       if (!confirmed) return;
-      console.log(timeRemaining);
-      await axios.put(`https://coding-relay-be.onrender.com/teams/updateTeam`, {
-        team_id: selectedTeam,
-        score: newTotalPoints,
-        time_remaining: timeRemaining,
-      });
-      toast.success(`Score updated to ${newTotalPoints}`);
+      await axios.put(
+        `https://coding-relay-be.onrender.com/teams/updateTeam`,
+        updateData
+      );
+      toast.success(`Score updated to ${totalPoints}`);
       setTimeout(() => {
         window.location.reload();
       }, 2000);
@@ -194,7 +204,6 @@ const ModifyPoints = () => {
                     <input
                       {...field}
                       type="number"
-                      required
                       value={field.value !== undefined ? field.value : ""}
                       onChange={(e) => {
                         const newValue =
