@@ -21,9 +21,15 @@ const teamSchema = z.object({
     .number()
     .min(0, { message: "Points should be greater than or equal to 0" }),
   timeRemaining: z
-    .number()
-    .min(0, { message: "Time should be greater than or equal to 0" })
-    .max(60, { message: "Time should be less than or equal to 60" }),
+    .union([z.string(), z.number()]) // Accepts both string & number
+    .transform((val) => {
+      if (typeof val === "string" && val.trim() === "") return 0; // Convert empty string to 0
+      return Number(val); // Convert valid numbers
+    })
+    .refine((val) => val >= 0 && val <= 60, {
+      message: "Time remaining must be between 0 and 60 minutes",
+    })
+    .optional(),
 });
 
 type FormData = z.infer<typeof teamSchema>;

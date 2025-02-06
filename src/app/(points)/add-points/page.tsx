@@ -26,11 +26,15 @@ const teamSchema = z.object({
     .string()
     .min(1, { message: "Hidden test cases is required" }),
   timeRemaining: z
-    .string()
-    .transform((val) => (val.trim() === "" ? 0 : parseInt(val, 10))) // Convert empty string to 0
+    .union([z.string(), z.number()]) // Accepts both string & number
+    .transform((val) => {
+      if (typeof val === "string" && val.trim() === "") return 0; // Convert empty string to 0
+      return Number(val); // Convert valid numbers
+    })
     .refine((val) => val >= 0 && val <= 60, {
       message: "Time remaining must be between 0 and 60 minutes",
-    }),
+    })
+    .optional(),
 });
 
 type FormData = z.infer<typeof teamSchema>;
