@@ -25,10 +25,6 @@ const teamSchema = z.object({
   hiddenTestCases: z
     .string()
     .min(1, { message: "Hidden test cases is required" }),
-  timeRemaining: z
-    .number()
-    .min(0, { message: "Time should be greater than or equal to 0" })
-    .max(60, { message: "Time should be less than or equal to 60" }),
 });
 
 type FormData = z.infer<typeof teamSchema>;
@@ -90,7 +86,6 @@ const AddPoints = () => {
       team_name: string;
       team_members: string[];
       score?: number;
-      time_remaining?: number;
     }[]
   >([]);
   const [selectedTeam, setSelectedTeam] = useState<string | null>(null);
@@ -152,14 +147,9 @@ const AddPoints = () => {
       toast.error("Please select a team");
       return;
     }
-    const { questionSet, testCases, hiddenTestCases, timeRemaining } = data;
+    const { questionSet, testCases, hiddenTestCases } = data;
     const points = calculatePoints(questionSet, testCases, hiddenTestCases);
-    if (
-      !questionSet ||
-      testCases === null ||
-      hiddenTestCases === null ||
-      timeRemaining === null
-    ) {
+    if (!questionSet || testCases === null || hiddenTestCases === null) {
       toast.error("Please fill out all fields");
       return;
     }
@@ -176,7 +166,6 @@ const AddPoints = () => {
       await axios.put(`https://coding-relay-be.onrender.com/teams/updateTeam`, {
         team_id: selectedTeam,
         score: newScore,
-        time_remaining: timeRemaining,
       });
       toast.success(`${points} points added to score`);
       setTimeout(() => {
@@ -243,15 +232,17 @@ const AddPoints = () => {
                   <SelectValue placeholder="Select Question ID" />
                 </SelectTrigger>
                 <SelectContent className="bg-black text-white border-none absolute z-50">
-                  {questions.map((q) => (
-                    <SelectItem
-                      className="hover:text-black hover:bg-white"
-                      key={q.id}
-                      value={q.id.toString()}
-                    >
-                      {q.id}
-                    </SelectItem>
-                  ))}
+                  {questions
+                    .sort((a, b) => a.id - b.id)
+                    .map((q) => (
+                      <SelectItem
+                        className="hover:text-black hover:bg-white"
+                        key={q.id}
+                        value={q.id.toString()}
+                      >
+                        {q.id}
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </motion.div>
@@ -336,7 +327,6 @@ const AddPoints = () => {
                         <span>Question Set</span>
                         <span>No. of Test Cases Passed</span>
                         <span>Hidden Test Cases Viewed?</span>
-                        <span>Time remaining</span>
                       </div>
                       <div className="w-[40%] flex flex-col items-center justify-center gap-y-[1.7rem]">
                         <Controller
@@ -417,7 +407,6 @@ const AddPoints = () => {
                             {errors.testCases.message}
                           </span>
                         )}
-
                         <Controller
                           name="hiddenTestCases"
                           control={control}
@@ -451,32 +440,6 @@ const AddPoints = () => {
                         {errors.hiddenTestCases && (
                           <span className="text-red-500 text-sm -mt-5">
                             {errors.hiddenTestCases.message}
-                          </span>
-                        )}
-                        <Controller
-                          name="timeRemaining"
-                          control={control}
-                          render={({ field }) => (
-                            <input
-                              {...field}
-                              type="number"
-                              value={
-                                field.value !== undefined ? field.value : ""
-                              }
-                              onChange={(e) => {
-                                const newValue =
-                                  e.target.value === ""
-                                    ? ""
-                                    : Number(e.target.value);
-                                field.onChange(newValue);
-                              }}
-                              className="w-64 h-10 bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
-                            />
-                          )}
-                        />
-                        {errors.timeRemaining && (
-                          <span className="text-red-500 text-sm w-40 h-2 m-5 p-0 sm:-mt-2 -mt-4 sm:mb-0 mb-8">
-                            {errors.timeRemaining.message}
                           </span>
                         )}
                       </div>
@@ -596,33 +559,6 @@ const AddPoints = () => {
                         {errors.hiddenTestCases && (
                           <span className="text-red-500 text-sm -mt-5">
                             {errors.hiddenTestCases.message}
-                          </span>
-                        )}
-                        <span>Time remaining</span>
-                        <Controller
-                          name="timeRemaining"
-                          control={control}
-                          render={({ field }) => (
-                            <input
-                              {...field}
-                              type="number"
-                              value={
-                                field.value !== undefined ? field.value : ""
-                              }
-                              onChange={(e) => {
-                                const newValue =
-                                  e.target.value === ""
-                                    ? ""
-                                    : Number(e.target.value);
-                                field.onChange(newValue);
-                              }}
-                              className="w-[22rem] h-[3rem] bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
-                            />
-                          )}
-                        />
-                        {errors.timeRemaining && (
-                          <span className="text-red-500 text-sm w-40 h-2 m-5 p-0 sm:-mt-2 -mt-4 sm:mb-0 mb-8">
-                            {errors.timeRemaining.message}
                           </span>
                         )}
                       </div>

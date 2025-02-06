@@ -21,9 +21,14 @@ const teamSchema = z.object({
     .number()
     .min(0, { message: "Points should be greater than or equal to 0" }),
   timeRemaining: z
-    .number()
-    .min(0, { message: "Time should be greater than or equal to 0" })
-    .max(60, { message: "Time should be less than or equal to 60" }),
+    .union([
+      z
+        .number()
+        .min(0)
+        .max(60, { message: "Time remaining must be between 0 to 60 minutes" }),
+      z.undefined(),
+    ])
+    .optional(), // Optional field
 });
 
 type FormData = z.infer<typeof teamSchema>;
@@ -79,10 +84,23 @@ const ModifyPoints = () => {
     }
     const { totalPoints, timeRemaining } = data;
 
-    const newTotalPoints = totalPoints;
-    if (newTotalPoints < 0) {
+    if (totalPoints < 0) {
       toast.error("Total points must be a valid number and >= 0");
       return;
+    }
+
+    const updateData: {
+      team_id: string;
+      score: number;
+      time_remaining?: number;
+    } = {
+      team_id: selectedTeam,
+      score: totalPoints,
+    };
+
+    // Only include timeRemaining if the user provided a valid value
+    if (timeRemaining !== undefined) {
+      updateData.time_remaining = timeRemaining;
     }
 
     try {
@@ -90,13 +108,11 @@ const ModifyPoints = () => {
         "Warning: This will overwrite the existing score. Do you wish to continue?"
       );
       if (!confirmed) return;
-      console.log(timeRemaining);
-      await axios.put(`https://coding-relay-be.onrender.com/teams/updateTeam`, {
-        team_id: selectedTeam,
-        score: newTotalPoints,
-        time_remaining: timeRemaining,
-      });
-      toast.success(`Score updated to ${newTotalPoints}`);
+      await axios.put(
+        `https://coding-relay-be.onrender.com/teams/updateTeam`,
+        updateData
+      );
+      toast.success(`Score updated to ${totalPoints}`);
       setTimeout(() => {
         window.location.reload();
       }, 2000);
@@ -152,8 +168,8 @@ const ModifyPoints = () => {
             className="flex flex-col items-center justify-around h-1/2"
             onSubmit={handleSubmit(onSubmit)}
           >
-            <div className="mt-4 flex sm:flex-row flex-col gap-y-5 sm:gap-y-0 items-center justify-center w-full gap-x-10">
-              <div className="text-2xl sm:w-[70%] w-full flex sm:flex-col flex-row items-center justify-center gap-y-[2.8rem]">
+            <div className="mt-4 flex sm:flex-row flex-row gap-y-5 sm:gap-y-0 items-center justify-center w-full sm:gap-x-10 gap-x-5 sm:px-0 px-5">
+              <div className="text-2xl sm:w-[70%] w-full flex flex-col items-center justify-center sm:gap-y-[2.8rem] gap-y-7">
                 <span>Total Points</span>
                 <span>Time remaining</span>
               </div>
@@ -172,7 +188,7 @@ const ModifyPoints = () => {
                           e.target.value === "" ? "" : Number(e.target.value);
                         field.onChange(newValue);
                       }}
-                      className="w-40 bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
+                      className="sm:w-40 w-36 bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
                     />
                   )}
                 />
@@ -188,14 +204,13 @@ const ModifyPoints = () => {
                     <input
                       {...field}
                       type="number"
-                      required
                       value={field.value !== undefined ? field.value : ""}
                       onChange={(e) => {
                         const newValue =
                           e.target.value === "" ? "" : Number(e.target.value);
                         field.onChange(newValue);
                       }}
-                      className="w-40 bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
+                      className="sm:w-40 w-36 bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
                     />
                   )}
                 />
