@@ -26,9 +26,11 @@ const teamSchema = z.object({
     .string()
     .min(1, { message: "Hidden test cases is required" }),
   timeRemaining: z
-    .number()
-    .min(0, { message: "Time should be greater than or equal to 0" })
-    .max(60, { message: "Time should be less than or equal to 60" }),
+    .string()
+    .transform((val) => (val.trim() === "" ? 0 : parseInt(val, 10))) // Convert empty string to 0
+    .refine((val) => val >= 0 && val <= 60, {
+      message: "Time remaining must be between 0 and 60 minutes",
+    }),
 });
 
 type FormData = z.infer<typeof teamSchema>;
