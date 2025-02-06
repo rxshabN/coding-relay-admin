@@ -152,8 +152,8 @@ const ModifyPoints = () => {
             className="flex flex-col items-center justify-around h-1/2"
             onSubmit={handleSubmit(onSubmit)}
           >
-            <div className="mt-4 flex sm:flex-row flex-col gap-y-5 sm:gap-y-0 items-center justify-center w-full gap-x-10">
-              <div className="text-2xl sm:w-[70%] w-full flex sm:flex-col flex-row items-center justify-center gap-y-[2.8rem]">
+            <div className="mt-4 flex sm:flex-row flex-row gap-y-5 sm:gap-y-0 items-center justify-center w-full sm:gap-x-10 gap-x-5 sm:px-0 px-5">
+              <div className="text-2xl sm:w-[70%] w-full flex flex-col items-center justify-center sm:gap-y-[2.8rem] gap-y-7">
                 <span>Total Points</span>
                 <span>Time remaining</span>
               </div>
@@ -172,7 +172,7 @@ const ModifyPoints = () => {
                           e.target.value === "" ? "" : Number(e.target.value);
                         field.onChange(newValue);
                       }}
-                      className="w-40 bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
+                      className="sm:w-40 w-36 bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
                     />
                   )}
                 />
@@ -195,7 +195,7 @@ const ModifyPoints = () => {
                           e.target.value === "" ? "" : Number(e.target.value);
                         field.onChange(newValue);
                       }}
-                      className="w-40 bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
+                      className="sm:w-40 w-36 bg-black text-white border-[2.5px] border-purple-700 p-3 rounded-lg"
                     />
                   )}
                 />

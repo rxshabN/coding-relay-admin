@@ -109,15 +109,17 @@ const SolutionPage = () => {
                 <SelectValue placeholder="Select Question ID" />
               </SelectTrigger>
               <SelectContent className="bg-black text-white border-none absolute z-50">
-                {questions.map((q) => (
-                  <SelectItem
-                    className="hover:text-black hover:bg-white"
-                    key={q.id}
-                    value={q.id.toString()}
-                  >
-                    {q.id}
-                  </SelectItem>
-                ))}
+                {questions
+                  .sort((a, b) => a.id - b.id)
+                  .map((q) => (
+                    <SelectItem
+                      className="hover:text-black hover:bg-white"
+                      key={q.id}
+                      value={q.id.toString()}
+                    >
+                      {q.id}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </motion.div>
