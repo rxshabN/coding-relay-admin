@@ -20,10 +20,11 @@ const teamSchema = z.object({
     .string()
     .min(1, { message: "Team name is required" })
     .max(50, { message: "Team name must be less than 50 characters" }),
-  member1: z.string().min(1, { message: "Member 1 name is required" }),
-  member2: z.string().min(1, { message: "Member 2 name is required" }),
-  member3: z.string().min(1, { message: "Member 3 name is required" }),
-  member4: z.string().min(1, { message: "Member 4 name is required" }),
+
+  member1: z.string().optional(),
+  member2: z.string().optional(),
+  member3: z.string().optional(),
+  member4: z.string().optional(),
 });
 
 type FormData = z.infer<typeof teamSchema>;
